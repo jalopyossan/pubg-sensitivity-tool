@@ -208,7 +208,7 @@ body.app-ready .app{animation:appFade .28s ease both}
 <div class="card"><div class="title">使い方</div><div class="small">
 <b>iPhone / iPad：</b>Safariで開く → 共有 → ホーム画面に追加<br><br>
 <b>Android：</b>Chromeで開く → ︙ → ホーム画面に追加<br><br>
-🟨武器統一感度：武器補正なし。🟩安定：実戦標準。🟦精密：命中率重視。🟥アグレッシブ：攻め・反応速度重視。肩越し撃ちはTPP/FPP別で表示します。ADSはジャイロ弱めで少し高め、強めで少し低めになる逆連動仕様です。
+🟨武器統一感度：武器補正なし。🟩安定：実戦標準。🟦精密：命中率重視。🟥アグレッシブ：攻め・反応速度重視。肩越し撃ちはTPP/FPP別で表示します。最終実戦バランス調整済み。強ジャイロ時の暴れを抑えつつ、近距離〜中距離まで自然に止めやすい感度になるよう最終最適化しています。
 </div></div>
 </section>
 </div>
@@ -244,8 +244,8 @@ const F = {
   gyro: { off:0, low:.85, mid:1.00, high:1.18 },
   style: {
     normal: { cam:1.00, ads:1.00, gcam:1.00, gads:1.00, label:'標準' },
-    rush: { cam:1.10, ads:1.06, gcam:1.16, gads:1.18, label:'近距離強め：反応速度重視' },
-    stable: { cam:.92, ads:.88, gcam:.88, gads:.96, label:'安定重視：ブレ抑制' }
+    rush: { cam:1.07, ads:1.03, gcam:1.10, gads:1.10, label:'近距離強め：反応速度重視' },
+    stable: { cam:.94, ads:.90, gcam:.91, gads:.98, label:'安定重視：ブレ抑制' }
   },
   mode: {
     unifiedMode: { cam:1, ads:1, gcam:1, gads:1, label:'武器統一感度：武器補正なし' },
@@ -269,11 +269,28 @@ const F = {
   }
 };
 
+
+const gyroScopeScale = {
+  'TPP ノンスコ': { low:0.95, mid:1.00, high:1.08 },
+  'FPP ノンスコ': { low:0.95, mid:1.00, high:1.07 },
+  '肩越し TPP': { low:0.94, mid:1.00, high:1.10 },
+  '肩越し FPP': { low:0.94, mid:1.00, high:1.08 },
+  'レッドドット': { low:0.98, mid:1.00, high:1.06 },
+  '2倍': { low:0.97, mid:1.00, high:1.08 },
+  '3倍': { low:0.98, mid:1.00, high:1.04 },
+  '4倍': { low:0.99, mid:1.00, high:1.02 },
+  '6倍': { low:1.00, mid:1.00, high:0.94 },
+  '8倍': { low:1.00, mid:1.00, high:0.88 }
+};
+
 let lastRows = [];
 
 function el(id) { return document.getElementById(id); }
 
 function formatValue(v) {
+  if (v > 300) {
+    v = 300 + (v - 300) * 0.42;
+  }
   return Math.max(1, Math.min(400, Math.round(v)));
 }
 
@@ -314,7 +331,7 @@ function calc() {
 
   const adsBase =
     base * .95 * w.ads * md.ads * st.ads * dg.ads * df.ads *
-    (isNoGyro ? 1.22 : (1 - ((F.gyro[gyro] || 1) - 1) * 0.15));
+    (isNoGyro ? 1.22 : (1 - ((F.gyro[gyro] || 1) - 1) * 0.11));
 
   const gcamBase =
     100 * 2.15 * (speed / 100) * F.device[DEVICE] * F.finger[fingers] *
@@ -326,12 +343,17 @@ function calc() {
 
   const rows = [['項目','カメラ','ADS','ジャイロカメラ','ジャイロADS']];
   currentScopes().forEach(s => {
+    const gyroScale =
+      gyro === 'off'
+        ? 1
+        : ((gyroScopeScale[s[0]] || {})[gyro] || 1);
+
     rows.push([
       s[0],
       formatValue(camBase * s[1]),
       formatValue(adsBase * s[2]),
-      isNoGyro ? 'OFF' : formatValue(gcamBase * s[3]),
-      isNoGyro ? 'OFF' : formatValue(gadsBase * s[4])
+      isNoGyro ? 'OFF' : formatValue(gcamBase * s[3] * gyroScale),
+      isNoGyro ? 'OFF' : formatValue(gadsBase * s[4] * gyroScale)
     ]);
   });
 
